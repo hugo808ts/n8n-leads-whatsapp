@@ -1,0 +1,68 @@
+{
+  "name": "Alerta de erros (WhatsApp)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## ⚠️ Alerta de erros\n\nDepois de importar, abra o fluxo **v2 PRO** → *Settings* → **Error workflow** → escolha este fluxo.\n\nSempre que o fluxo principal quebrar, você recebe o aviso no WhatsApp.",
+        "height": 220,
+        "width": 360,
+        "color": 3
+      },
+      "id": "b2f0c3e2-0101-4c1a-9b11-000000000101",
+      "name": "Como usar",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -440,
+        -160
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "b2f0c3e2-0102-4c1a-9b11-000000000102",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "COLE_AQUI_O_PHONE_NUMBER_ID",
+        "recipientPhoneNumber": "5511999999999",
+        "textBody": "=⚠️ *Erro no n8n*\n\n🔧 Fluxo: {{ $json.workflow.name }}\n📍 Nó: {{ $json.execution.lastNodeExecuted }}\n❌ {{ $json.execution.error.message }}\n\n🔗 {{ $json.execution.url }}",
+        "additionalFields": {}
+      },
+      "id": "b2f0c3e2-0103-4c1a-9b11-000000000103",
+      "name": "Avisar no WhatsApp",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        240,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Avisar no WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [],
+  "pinData": {}
+}

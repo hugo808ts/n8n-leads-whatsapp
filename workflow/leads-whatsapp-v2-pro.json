@@ -1,0 +1,1057 @@
+{
+  "name": "Leads WhatsApp → Google Sheets (v2 PRO)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 📲 Leads WhatsApp → Google Sheets (v2)\n\n1. Recebe a mensagem e **ignora repetidas** (a Meta reenvia webhooks).\n2. Guarda **toda mensagem** na aba `Mensagens` (histórico).\n3. Procura o lead na aba `Leads` pelo WhatsApp ID.\n4. **IA (Claude)** classifica: temperatura, score, interesse, resumo e próximo passo.\n5. Lead novo → cadastra + **resposta automática** (dentro ou fora do horário).\n   Lead antigo → atualiza sem mexer em Status/Responsável/Observações.\n6. Lead virou **quente** → **avisa o vendedor** no WhatsApp.\n\nSe a IA falhar, o lead é salvo mesmo assim como `A classificar`.",
+        "height": 400,
+        "width": 520,
+        "color": 4
+      },
+      "id": "b2f0c3e2-0001-4c1a-9b11-000000000001",
+      "name": "Sobre este fluxo",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -760,
+        -420
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## ⚙️ Configure só o nó **Configurações**\n\nTudo que muda de cliente para cliente fica nele: ID da planilha, nome e descrição da empresa, número do vendedor, horário de atendimento e textos das respostas.\n\nCredenciais necessárias:\n- WhatsApp (trigger e envio)\n- Google Sheets OAuth2\n- Anthropic (nó **Qualificar com IA**)",
+        "height": 260,
+        "width": 380,
+        "color": 6
+      },
+      "id": "b2f0c3e2-0002-4c1a-9b11-000000000002",
+      "name": "Configure aqui",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -200,
+        -420
+      ]
+    },
+    {
+      "parameters": {
+        "updates": [
+          "messages"
+        ]
+      },
+      "id": "b2f0c3e2-0003-4c1a-9b11-000000000003",
+      "name": "WhatsApp Trigger",
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "position": [
+        -700,
+        100
+      ],
+      "webhookId": "8e4d0b62-6f1c-4a7f-8b8d-3c9f2e5e7b21"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "99c94438-4872-5ea8-a197-60b1f01f414a",
+              "name": "planilhaId",
+              "value": "COLE_AQUI_O_ID_DA_PLANILHA",
+              "type": "string"
+            },
+            {
+              "id": "76a910a6-7684-59c5-a8f1-c7de3111898f",
+              "name": "nomeEmpresa",
+              "value": "Sua Empresa",
+              "type": "string"
+            },
+            {
+              "id": "86e37f64-deba-57f0-a182-a536fc5c7902",
+              "name": "descricaoNegocio",
+              "value": "Descreva aqui, em 1 ou 2 frases, o que a empresa vende e para quem. A IA usa isso para saber o que é um bom lead.",
+              "type": "string"
+            },
+            {
+              "id": "b174aa42-7303-54e3-93e1-77a0a72d0964",
+              "name": "modeloIA",
+              "value": "claude-haiku-5-5",
+              "type": "string"
+            },
+            {
+              "id": "d48b296a-4432-51f9-bed6-5cd9ffb200ec",
+              "name": "whatsappVendedor",
+              "value": "5511999999999",
+              "type": "string"
+            },
+            {
+              "id": "5cde4368-000a-5c84-8397-1cbc694ec206",
+              "name": "responsavelPadrao",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "8e5bb0f2-86e9-546b-8a96-79b40b447b1f",
+              "name": "fusoHorario",
+              "value": "America/Sao_Paulo",
+              "type": "string"
+            },
+            {
+              "id": "6687b97a-b994-5b04-a076-4c15a75a0081",
+              "name": "diasAtendimento",
+              "value": "1,2,3,4,5",
+              "type": "string"
+            },
+            {
+              "id": "455e2d7d-650e-5e48-862e-ea0153fc1d79",
+              "name": "horaInicio",
+              "value": 9,
+              "type": "number"
+            },
+            {
+              "id": "333005bc-f64e-53b3-a68c-e24cad1cf7c4",
+              "name": "horaFim",
+              "value": 18,
+              "type": "number"
+            },
+            {
+              "id": "c199dd9e-9cd0-5f05-8ebc-d0d4ca89b683",
+              "name": "respostaAutomatica",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "c6964950-c1f8-56b9-8856-3b0ca3a276ca",
+              "name": "msgBoasVindas",
+              "value": "Olá, {nome}! 👋 Obrigado pelo contato. Já recebi sua mensagem e em instantes alguém do nosso time vai te atender.",
+              "type": "string"
+            },
+            {
+              "id": "b75e979c-a104-5391-8bd0-bf7c100caf95",
+              "name": "msgForaHorario",
+              "value": "Olá, {nome}! 👋 Obrigado pelo contato. Nosso atendimento é de segunda a sexta, das 9h às 18h. Assim que abrirmos, falamos com você!",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "b2f0c3e2-0004-4c1a-9b11-000000000004",
+      "name": "Configurações",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -480,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normaliza o payload do WhatsApp Cloud API: 1 item por mensagem recebida.\n// Eventos sem 'messages' (entregue/lido) são descartados aqui.\nconst cfg = $('Configurações').first().json;\nconst out = [];\n\nfunction formatarTelefone(id) {\n  const d = String(id).replace(/\\D/g, '');\n  if (!d.startsWith('55') || d.length < 12) return '+' + d;\n  const ddd = d.slice(2, 4);\n  let num = d.slice(4);\n  // Celulares antigos chegam sem o 9 na frente; só ajusta a EXIBIÇÃO.\n  if (num.length === 8 && Number(num[0]) >= 6) num = '9' + num;\n  return num.length === 9\n    ? `+55 (${ddd}) ${num.slice(0, 5)}-${num.slice(5)}`\n    : `+55 (${ddd}) ${num.slice(0, 4)}-${num.slice(4)}`;\n}\n\nfunction extrairTexto(msg) {\n  switch (msg.type) {\n    case 'text': return msg.text?.body ?? '';\n    case 'button': return msg.button?.text ?? '';\n    case 'interactive':\n      return msg.interactive?.button_reply?.title ?? msg.interactive?.list_reply?.title ?? '';\n    case 'image': return '[imagem] ' + (msg.image?.caption ?? '');\n    case 'audio': return '[áudio]';\n    case 'video': return '[vídeo] ' + (msg.video?.caption ?? '');\n    case 'document': return '[documento] ' + (msg.document?.filename ?? '');\n    case 'location': return `[localização] ${msg.location?.latitude},${msg.location?.longitude}`;\n    case 'sticker': return '[figurinha]';\n    case 'reaction': return '[reação] ' + (msg.reaction?.emoji ?? '');\n    default: return `[${msg.type}]`;\n  }\n}\n\nconst dias = String(cfg.diasAtendimento).split(',').map(s => Number(s.trim()));\n\n$input.all().forEach((item, idx) => {\n  const j = item.json;\n  const value = j.messages ? j : (j.entry?.[0]?.changes?.[0]?.value ?? j);\n  const messages = value.messages ?? [];\n  const contacts = value.contacts ?? [];\n\n  for (const msg of messages) {\n    const contato = contacts.find(c => c.wa_id === msg.from) ?? contacts[0] ?? {};\n    const dt = DateTime.fromSeconds(Number(msg.timestamp)).setZone(cfg.fusoHorario);\n    const dentroHorario = dias.includes(dt.weekday)\n      && dt.hour >= Number(cfg.horaInicio) && dt.hour < Number(cfg.horaFim);\n\n    out.push({\n      json: {\n        messageId: msg.id,\n        whatsappId: String(msg.from),\n        telefone: formatarTelefone(msg.from),\n        nome: contato.profile?.name ?? 'Sem nome',\n        mensagem: extrairTexto(msg).trim(),\n        tipo: msg.type,\n        data: dt.toFormat('dd/MM/yyyy HH:mm'),\n        dentroHorario,\n        phoneNumberId: value.metadata?.phone_number_id ?? ''\n      },\n      pairedItem: { item: idx }\n    });\n  }\n});\n\nreturn out;"
+      },
+      "id": "b2f0c3e2-0005-4c1a-9b11-000000000005",
+      "name": "Extrair e normalizar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -260,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "removeItemsRepeatedInPreviousExecutions",
+        "dedupeValue": "={{ $json.messageId }}",
+        "options": {}
+      },
+      "id": "b2f0c3e2-0006-4c1a-9b11-000000000006",
+      "name": "Ignorar mensagens repetidas",
+      "type": "n8n-nodes-base.removeDuplicates",
+      "typeVersion": 2,
+      "position": [
+        -40,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $('Configurações').first().json.planilhaId }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Mensagens",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Data": "={{ $json.data }}",
+            "WhatsApp ID": "={{ $json.whatsappId }}",
+            "Nome": "={{ $json.nome }}",
+            "Tipo": "={{ $json.tipo }}",
+            "Mensagem": "={{ $json.mensagem }}",
+            "Message ID": "={{ $json.messageId }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Data",
+              "displayName": "Data",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "WhatsApp ID",
+              "displayName": "WhatsApp ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Nome",
+              "displayName": "Nome",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Tipo",
+              "displayName": "Tipo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Mensagem",
+              "displayName": "Mensagem",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Message ID",
+              "displayName": "Message ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {
+          "cellFormat": "RAW"
+        }
+      },
+      "id": "b2f0c3e2-0007-4c1a-9b11-000000000007",
+      "name": "Salvar no histórico",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        180,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $('Configurações').first().json.planilhaId }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Leads",
+          "mode": "name"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "WhatsApp ID",
+              "lookupValue": "={{ $('Extrair e normalizar').item.json.whatsappId }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b2f0c3e2-0008-4c1a-9b11-000000000008",
+      "name": "Buscar lead",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        400,
+        100
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Junta a mensagem nova com o que já existe na planilha e monta o pedido para a IA.\nconst lead = $('Extrair e normalizar').item.json;\nconst cfg = $('Configurações').first().json;\nconst linha = $json; // linha encontrada na aba Leads (vazia se o lead é novo)\nconst jaExiste = Boolean(linha['WhatsApp ID']);\n\nconst anterior = {\n  id: linha['ID'] ?? '',\n  qtd: Number(linha['Qtd mensagens'] || 0),\n  temperatura: String(linha['Temperatura'] ?? '').toLowerCase(),\n  resumo: linha['Resumo IA'] ?? '',\n  origem: linha['Origem'] ?? '',\n  score: linha['Score'] ?? '',\n  interesse: linha['Interesse'] ?? '',\n  proximoPasso: linha['Próximo passo'] ?? ''\n};\n\nconst system = `Você é o assistente comercial da empresa \"${cfg.nomeEmpresa}\". ${cfg.descricaoNegocio}\nAnalise a conversa de um lead que chegou pelo WhatsApp e responda APENAS com um JSON válido, sem nenhum texto fora dele, no formato:\n{\"temperatura\":\"quente|morno|frio\",\"score\":0,\"interesse\":\"\",\"resumo\":\"\",\"proximo_passo\":\"\",\"origem\":\"\"}\nRegras:\n- quente: quer comprar, pede preço, orçamento, horário ou agendamento.\n- morno: demonstra interesse, mas ainda está pesquisando ou tirando dúvidas.\n- frio: curiosidade, mensagem vaga, spam ou assunto fora do que a empresa vende.\n- score: 0 a 100, chance de virar venda.\n- interesse: produto ou serviço que a pessoa quer, em poucas palavras.\n- resumo: até 2 frases resumindo a conversa INTEIRA até agora (use o resumo anterior).\n- proximo_passo: ação concreta para o vendedor.\n- origem: de onde a pessoa disse que veio (Instagram, Google, indicação...) ou \"Não informado\".`;\n\nconst user = `Nome: ${lead.nome}\nResumo anterior: ${anterior.resumo || 'primeiro contato'}\nNova mensagem: ${lead.mensagem}`;\n\nreturn {\n  json: {\n    ...lead,\n    jaExiste,\n    anterior,\n    aiBody: {\n      model: cfg.modeloIA,\n      max_tokens: 400,\n      system,\n      messages: [{ role: 'user', content: user }]\n    }\n  }\n};"
+      },
+      "id": "b2f0c3e2-0009-4c1a-9b11-000000000009",
+      "name": "Preparar análise IA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        620,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "anthropicApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.aiBody) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "b2f0c3e2-0010-4c1a-9b11-000000000010",
+      "name": "Qualificar com IA",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        840,
+        100
+      ],
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Lê a resposta da IA (com fallback se ela falhar) e monta a linha final do lead.\nconst base = $('Preparar análise IA').item.json;\nconst cfg = $('Configurações').first().json;\n\nlet ia = {};\ntry {\n  const txt = $json.content?.[0]?.text ?? '';\n  const m = txt.match(/\\{[\\s\\S]*\\}/);\n  ia = m ? JSON.parse(m[0]) : {};\n} catch (e) {\n  ia = {};\n}\n\nconst cap = s => s.charAt(0).toUpperCase() + s.slice(1);\nconst t = String(ia.temperatura ?? '').toLowerCase();\nconst temperaturaKey = ['quente', 'morno', 'frio'].includes(t) ? t : (base.anterior.temperatura || '');\nconst temperatura = temperaturaKey ? cap(temperaturaKey) : 'A classificar';\n\nconst origemIA = ia.origem && !/não informado/i.test(ia.origem) ? ia.origem : '';\nconst origem = origemIA || base.anterior.origem || 'WhatsApp';\n\nconst id = base.jaExiste && base.anterior.id\n  ? base.anterior.id\n  : 'LEAD-' + DateTime.now().setZone(cfg.fusoHorario).toFormat('yyMMddHHmmss');\n\n// Avisa o vendedor só quando o lead VIRA quente (evita spam a cada mensagem).\nconst notificarVendedor = temperaturaKey === 'quente'\n  && (!base.jaExiste || base.anterior.temperatura !== 'quente');\n\nconst primeiroNome = String(base.nome).split(' ')[0];\nlet respostaAutomatica = '';\nif (!base.jaExiste && cfg.respostaAutomatica) {\n  const modelo = base.dentroHorario ? cfg.msgBoasVindas : cfg.msgForaHorario;\n  respostaAutomatica = String(modelo).replace(/\\{nome\\}/g, primeiroNome);\n}\n\nreturn {\n  json: {\n    id,\n    whatsappId: base.whatsappId,\n    telefone: base.telefone,\n    nome: base.nome,\n    mensagem: base.mensagem,\n    data: base.data,\n    phoneNumberId: base.phoneNumberId,\n    jaExiste: base.jaExiste,\n    qtdMensagens: base.anterior.qtd + 1,\n    temperatura,\n    score: ia.score !== undefined && Number.isFinite(Number(ia.score)) ? Number(ia.score) : base.anterior.score,\n    interesse: ia.interesse || base.anterior.interesse,\n    resumo: ia.resumo || base.anterior.resumo,\n    proximoPasso: ia.proximo_passo || base.anterior.proximoPasso,\n    origem,\n    linkWhatsapp: `https://wa.me/${base.whatsappId}`,\n    iaFalhou: !$json.content,\n    notificarVendedor,\n    respostaAutomatica\n  }\n};"
+      },
+      "id": "b2f0c3e2-0011-4c1a-9b11-000000000011",
+      "name": "Montar dados do lead",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1060,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "0814f2eb-2839-5148-86f4-a129649e0a4e",
+              "leftValue": "={{ $json.jaExiste }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b2f0c3e2-0012-4c1a-9b11-000000000012",
+      "name": "Lead novo?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1280,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $('Configurações').first().json.planilhaId }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Leads",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "ID": "={{ $json.id }}",
+            "Data de entrada": "={{ $json.data }}",
+            "WhatsApp ID": "={{ $json.whatsappId }}",
+            "Nome": "={{ $json.nome }}",
+            "Telefone": "={{ $json.telefone }}",
+            "Última mensagem": "={{ $json.mensagem }}",
+            "Última interação": "={{ $json.data }}",
+            "Qtd mensagens": "={{ $json.qtdMensagens }}",
+            "Temperatura": "={{ $json.temperatura }}",
+            "Score": "={{ $json.score }}",
+            "Interesse": "={{ $json.interesse }}",
+            "Resumo IA": "={{ $json.resumo }}",
+            "Próximo passo": "={{ $json.proximoPasso }}",
+            "Origem": "={{ $json.origem }}",
+            "Primeira mensagem": "={{ $json.mensagem }}",
+            "Status": "Novo",
+            "Responsável": "={{ $('Configurações').first().json.responsavelPadrao }}",
+            "Observações": "",
+            "Link WhatsApp": "={{ $json.linkWhatsapp }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "ID",
+              "displayName": "ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Data de entrada",
+              "displayName": "Data de entrada",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "WhatsApp ID",
+              "displayName": "WhatsApp ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Nome",
+              "displayName": "Nome",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Telefone",
+              "displayName": "Telefone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Última mensagem",
+              "displayName": "Última mensagem",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Última interação",
+              "displayName": "Última interação",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Qtd mensagens",
+              "displayName": "Qtd mensagens",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Temperatura",
+              "displayName": "Temperatura",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Score",
+              "displayName": "Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Interesse",
+              "displayName": "Interesse",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Resumo IA",
+              "displayName": "Resumo IA",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Próximo passo",
+              "displayName": "Próximo passo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Origem",
+              "displayName": "Origem",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Primeira mensagem",
+              "displayName": "Primeira mensagem",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Responsável",
+              "displayName": "Responsável",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Observações",
+              "displayName": "Observações",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Link WhatsApp",
+              "displayName": "Link WhatsApp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {
+          "cellFormat": "RAW"
+        }
+      },
+      "id": "b2f0c3e2-0013-4c1a-9b11-000000000013",
+      "name": "Cadastrar novo lead",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1520,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $('Configurações').first().json.planilhaId }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Leads",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "WhatsApp ID": "={{ $json.whatsappId }}",
+            "Nome": "={{ $json.nome }}",
+            "Telefone": "={{ $json.telefone }}",
+            "Última mensagem": "={{ $json.mensagem }}",
+            "Última interação": "={{ $json.data }}",
+            "Qtd mensagens": "={{ $json.qtdMensagens }}",
+            "Temperatura": "={{ $json.temperatura }}",
+            "Score": "={{ $json.score }}",
+            "Interesse": "={{ $json.interesse }}",
+            "Resumo IA": "={{ $json.resumo }}",
+            "Próximo passo": "={{ $json.proximoPasso }}",
+            "Origem": "={{ $json.origem }}"
+          },
+          "matchingColumns": [
+            "WhatsApp ID"
+          ],
+          "schema": [
+            {
+              "id": "WhatsApp ID",
+              "displayName": "WhatsApp ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Nome",
+              "displayName": "Nome",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Telefone",
+              "displayName": "Telefone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Última mensagem",
+              "displayName": "Última mensagem",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Última interação",
+              "displayName": "Última interação",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Qtd mensagens",
+              "displayName": "Qtd mensagens",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Temperatura",
+              "displayName": "Temperatura",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Score",
+              "displayName": "Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Interesse",
+              "displayName": "Interesse",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Resumo IA",
+              "displayName": "Resumo IA",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Próximo passo",
+              "displayName": "Próximo passo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Origem",
+              "displayName": "Origem",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {
+          "cellFormat": "RAW"
+        }
+      },
+      "id": "b2f0c3e2-0014-4c1a-9b11-000000000014",
+      "name": "Atualizar lead",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1520,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "34a322b6-6793-59d4-8cb2-326d3f31c0d9",
+              "leftValue": "={{ $('Montar dados do lead').item.json.respostaAutomatica }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b2f0c3e2-0015-4c1a-9b11-000000000015",
+      "name": "Responder automaticamente?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "={{ $('Montar dados do lead').item.json.phoneNumberId }}",
+        "recipientPhoneNumber": "={{ $('Montar dados do lead').item.json.whatsappId }}",
+        "textBody": "={{ $('Montar dados do lead').item.json.respostaAutomatica }}",
+        "additionalFields": {}
+      },
+      "id": "b2f0c3e2-0016-4c1a-9b11-000000000016",
+      "name": "Enviar resposta automática",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        1990,
+        -100
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "626d5788-e111-5c45-8253-f916c5118ea7",
+              "leftValue": "={{ $('Montar dados do lead').item.json.notificarVendedor }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b2f0c3e2-0017-4c1a-9b11-000000000017",
+      "name": "Lead quente?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "={{ $('Montar dados do lead').item.json.phoneNumberId }}",
+        "recipientPhoneNumber": "={{ $('Configurações').first().json.whatsappVendedor }}",
+        "textBody": "=🔥 *Lead quente no WhatsApp!*\n\n👤 {{ $('Montar dados do lead').item.json.nome }}\n📱 {{ $('Montar dados do lead').item.json.telefone }}\n📊 Score: {{ $('Montar dados do lead').item.json.score }}/100\n🎯 Interesse: {{ $('Montar dados do lead').item.json.interesse }}\n\n💬 \"{{ $('Montar dados do lead').item.json.mensagem }}\"\n\n📝 {{ $('Montar dados do lead').item.json.resumo }}\n➡️ *Próximo passo:* {{ $('Montar dados do lead').item.json.proximoPasso }}\n\nResponder agora: {{ $('Montar dados do lead').item.json.linkWhatsapp }}",
+        "additionalFields": {}
+      },
+      "id": "b2f0c3e2-0018-4c1a-9b11-000000000018",
+      "name": "Avisar vendedor",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        1990,
+        160
+      ],
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "WhatsApp Trigger": {
+      "main": [
+        [
+          {
+            "node": "Configurações",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Configurações": {
+      "main": [
+        [
+          {
+            "node": "Extrair e normalizar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extrair e normalizar": {
+      "main": [
+        [
+          {
+            "node": "Ignorar mensagens repetidas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ignorar mensagens repetidas": {
+      "main": [
+        [
+          {
+            "node": "Salvar no histórico",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Salvar no histórico": {
+      "main": [
+        [
+          {
+            "node": "Buscar lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar lead": {
+      "main": [
+        [
+          {
+            "node": "Preparar análise IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar análise IA": {
+      "main": [
+        [
+          {
+            "node": "Qualificar com IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qualificar com IA": {
+      "main": [
+        [
+          {
+            "node": "Montar dados do lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Montar dados do lead": {
+      "main": [
+        [
+          {
+            "node": "Lead novo?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lead novo?": {
+      "main": [
+        [
+          {
+            "node": "Cadastrar novo lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Atualizar lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cadastrar novo lead": {
+      "main": [
+        [
+          {
+            "node": "Responder automaticamente?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Lead quente?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Atualizar lead": {
+      "main": [
+        [
+          {
+            "node": "Lead quente?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Responder automaticamente?": {
+      "main": [
+        [
+          {
+            "node": "Enviar resposta automática",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lead quente?": {
+      "main": [
+        [
+          {
+            "node": "Avisar vendedor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Sao_Paulo",
+    "saveManualExecutions": true
+  },
+  "tags": [],
+  "pinData": {}
+}

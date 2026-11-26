@@ -1,0 +1,230 @@
+{
+  "name": "Leads WhatsApp → Google Sheets",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Leads WhatsApp → Google Sheets\n\n1. **WhatsApp Trigger** recebe cada mensagem nova (WhatsApp Cloud API / Meta).\n2. **Extrair dados do lead** normaliza nome, telefone e texto (ignora status de entrega/leitura).\n3. **Buscar lead na planilha** procura o telefone na aba `Leads`.\n4. Se **já existe** → atualiza última mensagem e soma +1 no contador.\n5. Se é **novo** → cria a linha com Status = `Novo`.\n6. *(Opcional, desativado)* responde automaticamente ao lead novo.\n\n**Configurar:** credenciais do WhatsApp e do Google Sheets + ID da planilha nos 3 nós do Sheets.",
+        "height": 380,
+        "width": 420,
+        "color": 4
+      },
+      "id": "a1f0c3e2-0001-4c1a-9b11-000000000001",
+      "name": "Sobre este fluxo",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-520, -200]
+    },
+    {
+      "parameters": {
+        "updates": ["messages"]
+      },
+      "id": "a1f0c3e2-0002-4c1a-9b11-000000000002",
+      "name": "WhatsApp Trigger",
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "position": [0, 0],
+      "webhookId": "7d3c9a51-5e0b-4f6e-9a7c-2b8f1e4d6a10"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normaliza o payload do WhatsApp Cloud API em 1 item por mensagem recebida.\n// Eventos sem 'messages' (status de entregue/lido) são descartados.\nconst out = [];\n\nfor (const item of $input.all()) {\n  const j = item.json;\n  // O trigger do n8n entrega o objeto 'value'; mas tratamos também o body bruto.\n  const value = j.messages ? j : (j.entry?.[0]?.changes?.[0]?.value ?? j);\n  const messages = value.messages ?? [];\n  const contacts = value.contacts ?? [];\n\n  for (const msg of messages) {\n    const contato = contacts.find(c => c.wa_id === msg.from) ?? contacts[0] ?? {};\n\n    let texto = '';\n    switch (msg.type) {\n      case 'text': texto = msg.text?.body ?? ''; break;\n      case 'button': texto = msg.button?.text ?? ''; break;\n      case 'interactive':\n        texto = msg.interactive?.button_reply?.title ?? msg.interactive?.list_reply?.title ?? '';\n        break;\n      case 'image': texto = '[imagem] ' + (msg.image?.caption ?? ''); break;\n      case 'audio': texto = '[áudio]'; break;\n      case 'video': texto = '[vídeo] ' + (msg.video?.caption ?? ''); break;\n      case 'document': texto = '[documento] ' + (msg.document?.filename ?? ''); break;\n      case 'location': texto = `[localização] ${msg.location?.latitude},${msg.location?.longitude}`; break;\n      default: texto = `[${msg.type}]`;\n    }\n\n    const data = new Date(Number(msg.timestamp) * 1000);\n    const dataBR = data.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });\n\n    out.push({\n      json: {\n        telefone: String(msg.from),\n        nome: contato.profile?.name ?? 'Sem nome',\n        mensagem: texto.trim(),\n        tipo: msg.type,\n        data: dataBR,\n        phoneNumberId: value.metadata?.phone_number_id ?? ''\n      }\n    });\n  }\n}\n\nreturn out;"
+      },
+      "id": "a1f0c3e2-0003-4c1a-9b11-000000000003",
+      "name": "Extrair dados do lead",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "COLE_AQUI_O_ID_DA_PLANILHA",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Leads",
+          "mode": "name"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Telefone",
+              "lookupValue": "={{ $json.telefone }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1f0c3e2-0004-4c1a-9b11-000000000004",
+      "name": "Buscar lead na planilha",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [440, 0],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "c0ndit10-0001-4c1a-9b11-000000000001",
+              "leftValue": "={{ $json.Telefone }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a1f0c3e2-0005-4c1a-9b11-000000000005",
+      "name": "Lead já existe?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [660, 0]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "COLE_AQUI_O_ID_DA_PLANILHA",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Leads",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Telefone": "={{ $('Extrair dados do lead').item.json.telefone }}",
+            "Nome": "={{ $('Extrair dados do lead').item.json.nome }}",
+            "Última mensagem": "={{ $('Extrair dados do lead').item.json.mensagem }}",
+            "Última interação": "={{ $('Extrair dados do lead').item.json.data }}",
+            "Qtd mensagens": "={{ Number($json['Qtd mensagens'] || 0) + 1 }}"
+          },
+          "matchingColumns": ["Telefone"],
+          "schema": [
+            { "id": "Telefone", "displayName": "Telefone", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "Nome", "displayName": "Nome", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "Última mensagem", "displayName": "Última mensagem", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "Última interação", "displayName": "Última interação", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "Qtd mensagens", "displayName": "Qtd mensagens", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1f0c3e2-0006-4c1a-9b11-000000000006",
+      "name": "Atualizar lead existente",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [900, -120]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "COLE_AQUI_O_ID_DA_PLANILHA",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Leads",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Data de entrada": "={{ $('Extrair dados do lead').item.json.data }}",
+            "Nome": "={{ $('Extrair dados do lead').item.json.nome }}",
+            "Telefone": "={{ $('Extrair dados do lead').item.json.telefone }}",
+            "Primeira mensagem": "={{ $('Extrair dados do lead').item.json.mensagem }}",
+            "Última mensagem": "={{ $('Extrair dados do lead').item.json.mensagem }}",
+            "Última interação": "={{ $('Extrair dados do lead').item.json.data }}",
+            "Qtd mensagens": "1",
+            "Status": "Novo",
+            "Origem": "WhatsApp",
+            "Responsável": "",
+            "Observações": ""
+          },
+          "matchingColumns": [],
+          "schema": [
+            { "id": "Data de entrada", "displayName": "Data de entrada", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "Nome", "displayName": "Nome", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "Telefone", "displayName": "Telefone", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "Primeira mensagem", "displayName": "Primeira mensagem", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "Última mensagem", "displayName": "Última mensagem", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "Última interação", "displayName": "Última interação", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "Qtd mensagens", "displayName": "Qtd mensagens", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "Status", "displayName": "Status", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "Origem", "displayName": "Origem", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "Responsável", "displayName": "Responsável", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "Observações", "displayName": "Observações", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1f0c3e2-0007-4c1a-9b11-000000000007",
+      "name": "Cadastrar novo lead",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [900, 120]
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "={{ $('Extrair dados do lead').item.json.phoneNumberId }}",
+        "recipientPhoneNumber": "={{ $('Extrair dados do lead').item.json.telefone }}",
+        "textBody": "=Olá, {{ $('Extrair dados do lead').item.json.nome }}! 👋 Recebemos sua mensagem e logo um atendente vai falar com você.",
+        "additionalFields": {}
+      },
+      "id": "a1f0c3e2-0008-4c1a-9b11-000000000008",
+      "name": "Resposta automática (opcional)",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [1120, 120],
+      "disabled": true
+    }
+  ],
+  "connections": {
+    "WhatsApp Trigger": {
+      "main": [[{ "node": "Extrair dados do lead", "type": "main", "index": 0 }]]
+    },
+    "Extrair dados do lead": {
+      "main": [[{ "node": "Buscar lead na planilha", "type": "main", "index": 0 }]]
+    },
+    "Buscar lead na planilha": {
+      "main": [[{ "node": "Lead já existe?", "type": "main", "index": 0 }]]
+    },
+    "Lead já existe?": {
+      "main": [
+        [{ "node": "Atualizar lead existente", "type": "main", "index": 0 }],
+        [{ "node": "Cadastrar novo lead", "type": "main", "index": 0 }]
+      ]
+    },
+    "Cadastrar novo lead": {
+      "main": [[{ "node": "Resposta automática (opcional)", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Sao_Paulo"
+  },
+  "tags": [],
+  "pinData": {}
+}

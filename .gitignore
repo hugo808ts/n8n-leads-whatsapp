@@ -1,0 +1,9 @@
+# Nunca suba credenciais ou exports com dados reais de leads
+.env
+*.env
+credentials*.json
+**/leads-reais*.csv
+.n8n/
+node_modules/
+.DS_Store
+Thumbs.db
