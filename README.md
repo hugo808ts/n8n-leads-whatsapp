@@ -39,24 +39,6 @@ Um fluxo no **n8n** que escuta o WhatsApp da empresa e, para cada mensagem:
 
 ## ⚙️ Como funciona
 
-```mermaid
-flowchart LR
-    A[WhatsApp Trigger] --> B[Configurações]
-    B --> C[Extrair e normalizar]
-    C --> D[Ignorar mensagens<br/>repetidas]
-    D --> E[(Aba Mensagens<br/>histórico)]
-    E --> F[Buscar lead]
-    F --> G[🤖 Qualificar com IA<br/>Claude]
-    G --> H[Montar dados<br/>do lead]
-    H --> I{Lead novo?}
-    I -- Sim --> J[(Cadastrar lead)]
-    I -- Não --> K[(Atualizar lead)]
-    J --> L[Resposta automática<br/>dentro/fora do horário]
-    J --> M{Virou quente?}
-    K --> M
-    M -- Sim --> N[🔥 Avisar vendedor<br/>no WhatsApp]
-```
-
 <p align="center">
   <img src="docs/images/fluxo-v2.png" alt="Fluxo v2 PRO no editor do n8n" width="100%">
   <br><sub>O fluxo v2 PRO no editor do n8n: 16 nós, da mensagem recebida ao alerta para o vendedor.</sub>
